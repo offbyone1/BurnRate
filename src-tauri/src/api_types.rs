@@ -27,3 +27,12 @@ pub struct Settings {
     pub org_id: Option<String>,
     pub saved_at: Option<u64>,
 }
+
+/// Settings returned to the frontend. Session key is stored securely in the OS credential store.
+#[derive(Debug, Clone, Serialize)]
+pub struct SettingsDisplay {
+    pub has_session_key: bool,
+    pub session_key: Option<String>,
+    pub org_id: Option<String>,
+    pub saved_at: Option<u64>,
+}

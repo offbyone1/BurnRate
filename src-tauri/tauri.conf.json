@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/nicegui/nicegui/main/nicegui/static/tauri.schema.json",
+  "$schema": "https://schema.tauri.app/config/2",
   "productName": "BurnRate",
   "version": "0.1.0",
   "identifier": "com.offbyone1.burnrate",
@@ -25,7 +25,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost"
     }
   },
   "plugins": {}

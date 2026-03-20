@@ -21,6 +21,8 @@ pub fn run() {
             commands::auto_detect_org,
         ])
         .setup(|app| {
+            app.manage(reqwest::Client::new());
+
             let show = MenuItem::with_id(app, "show", "Show BurnRate", true, None::<&str>)?;
             let refresh = MenuItem::with_id(app, "refresh", "Refresh", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;

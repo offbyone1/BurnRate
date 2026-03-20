@@ -100,6 +100,10 @@ export function renderExpanded(usage: ClaudeUsageResponse): void {
   container.innerHTML = html;
 }
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 export function renderError(message: string): void {
   document.getElementById("five-hour-compact")!.textContent = "—";
   document.getElementById("seven-day-compact")!.textContent = "err";
@@ -107,7 +111,7 @@ export function renderError(message: string): void {
   document.getElementById("usage-bars")!.innerHTML = `
     <div class="error-banner">
       <span class="error-icon">&#x26A0;</span>
-      <span>${message}</span>
+      <span>${escapeHtml(message)}</span>
     </div>`;
 }
 

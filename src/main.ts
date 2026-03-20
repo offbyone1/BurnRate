@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { isEnabled, enable, disable } from "@tauri-apps/plugin-autostart";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import type { ClaudeUsageResponse, Settings } from "./types";
+import type { ClaudeUsageResponse, Settings, SettingsDisplay } from "./types";
 import { renderCompact, renderExpanded, renderError, setViewState } from "./ui";
 
 const SESSION_KEY_LIFETIME_MS = 28 * 24 * 60 * 60 * 1000;
@@ -39,9 +39,9 @@ function stopPolling(): void {
 }
 
 async function init(): Promise<void> {
-  const settings = await invoke<Settings>("load_settings");
+  const settings = await invoke<SettingsDisplay>("load_settings");
 
-  if (settings.session_key) {
+  if (settings.has_session_key) {
     startPolling();
   } else {
     await expand();
@@ -76,9 +76,12 @@ async function openSettings(): Promise<void> {
   setViewState("settings");
 
   try {
-    const settings = await invoke<Settings>("load_settings");
+    const settings = await invoke<SettingsDisplay>("load_settings");
+    const keyInput = document.getElementById("session-key-input") as HTMLInputElement;
     if (settings.session_key)
-      (document.getElementById("session-key-input") as HTMLInputElement).value = settings.session_key;
+      keyInput.value = settings.session_key;
+    else
+      keyInput.value = "";
     if (settings.org_id)
       (document.getElementById("org-id-input") as HTMLInputElement).value = settings.org_id;
 
@@ -106,11 +109,17 @@ async function saveSettings(): Promise<void> {
   const sessionKey = (document.getElementById("session-key-input") as HTMLInputElement).value.trim() || null;
   let orgId = (document.getElementById("org-id-input") as HTMLInputElement).value.trim() || null;
 
-  if (!sessionKey) return;
-
   const statusEl = document.getElementById("import-status")!;
 
-  if (!orgId) {
+  // Session key required on first setup; subsequent saves can omit it to keep existing key
+  const currentSettings = await invoke<SettingsDisplay>("load_settings");
+  if (!sessionKey && !currentSettings.has_session_key) {
+    statusEl.textContent = "Session key is required.";
+    statusEl.className = "import-status error";
+    return;
+  }
+
+  if (!orgId && sessionKey) {
     statusEl.textContent = "Detecting organization...";
     statusEl.className = "import-status loading";
     try {
