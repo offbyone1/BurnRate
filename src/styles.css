@@ -47,6 +47,15 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
 body {
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--card);
@@ -104,7 +113,7 @@ body {
   position: absolute;
 }
 
-/* Grip handle (drag dots) */
+/* Grip handle (drag dots) — hidden until pill hover */
 .grip-handle {
   display: grid;
   grid-template-columns: repeat(2, 4px);
@@ -253,8 +262,8 @@ body {
 }
 
 .titlebar-btn {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -263,8 +272,13 @@ body {
   color: var(--text-tertiary);
   font-size: 14px;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 6px;
   transition: all 0.15s;
+}
+
+.titlebar-btn svg {
+  width: 13px;
+  height: 13px;
 }
 
 .titlebar-btn:hover {
@@ -295,38 +309,26 @@ body {
 
 /* Usage body */
 .usage-body {
-  padding: 14px;
+  padding: 14px 16px 6px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
   flex: 1;
   overflow-y: auto;
 }
 
-.usage-section-label {
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  margin-bottom: 2px;
-}
-
-/* Usage row */
+/* Usage row — borderless */
 .usage-row {
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  padding: 10px 12px;
-  transition: border-color 0.2s;
+  padding: 10px 0;
   animation: slide-in-row 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.usage-row:hover { border-color: var(--border); }
+.usage-row + .usage-row {
+  border-top: 1px solid var(--border-subtle);
+}
 
 .usage-row.inactive {
   opacity: 0.4;
-  border-style: dashed;
 }
 
 .usage-row-header {
@@ -384,51 +386,23 @@ body {
 /* Progress bar */
 .progress-track {
   width: 100%;
-  height: 4px;
-  background: var(--card);
-  border-radius: 2px;
+  height: 5px;
+  background: var(--surface);
+  border-radius: 3px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  border-radius: 2px;
+  border-radius: 3px;
   transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.progress-fill.green { background: var(--green); }
-.progress-fill.orange { background: var(--orange); }
-.progress-fill.red { background: var(--red); }
+.progress-fill.green { background: var(--green); box-shadow: 0 0 8px var(--green-glow); }
+.progress-fill.orange { background: var(--orange); box-shadow: 0 0 8px var(--orange-glow); }
+.progress-fill.red { background: var(--red); box-shadow: 0 0 8px var(--red-glow); }
 
-/* Credits row */
-.credits-row {
-  background: linear-gradient(135deg, var(--surface) 0%, rgba(232, 123, 53, 0.03) 100%);
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  padding: 10px 12px;
-  animation: slide-in-row 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.credits-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 2px;
-}
-
-.credits-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.credits-label .icon {
-  font-size: 11px;
-  opacity: 0.7;
-}
+/* Credits (inside usage-row now) */
 
 .credits-amount {
   font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
@@ -467,15 +441,14 @@ body {
   flex-shrink: 0;
 }
 
-/* Footer */
-.panel-footer {
+/* Settings footer (settings overlay only) */
+.settings-footer {
   display: flex;
   gap: 6px;
   padding: 0 14px 14px;
-  flex-shrink: 0;
 }
 
-.footer-btn {
+.settings-footer .footer-btn {
   flex: 1;
   height: 34px;
   border-radius: 9px;
@@ -493,27 +466,19 @@ body {
   gap: 5px;
 }
 
-.footer-btn:hover {
+.settings-footer .footer-btn:hover {
   background: var(--card-elevated);
   border-color: var(--accent);
   color: var(--text-primary);
 }
 
-.footer-btn svg {
-  width: 13px;
-  height: 13px;
-  opacity: 0.6;
-}
-
-.footer-btn:hover svg { opacity: 1; }
-
-.footer-btn.primary {
+.settings-footer .footer-btn.primary {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
 }
 
-.footer-btn.primary:hover {
+.settings-footer .footer-btn.primary:hover {
   background: #d06b28;
   box-shadow: 0 0 16px var(--accent-glow);
 }

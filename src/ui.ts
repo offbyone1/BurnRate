@@ -2,7 +2,7 @@ import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import type { ClaudeUsageResponse, ViewState } from "./types";
 
 const COMPACT_SIZE = { width: 270, height: 64 };
-const EXPANDED_SIZE = { width: 340, height: 520 };
+const EXPANDED_SIZE = { width: 320, height: 310 };
 
 type ColorTier = "green" | "orange" | "red";
 
@@ -77,22 +77,24 @@ export function renderCompact(usage: ClaudeUsageResponse): void {
 export function renderExpanded(usage: ClaudeUsageResponse): void {
   const container = document.getElementById("usage-bars")!;
 
-  let html = `<div class="usage-section-label">Claude</div>`;
+  let html = "";
   html += usageRowHtml("5-Hour Window", usage.five_hour);
   html += usageRowHtml("7-Day Window", usage.seven_day);
 
   if (usage.extra_usage) {
     const ex = usage.extra_usage;
     const tier = colorTier(ex.utilization);
+    const color = `var(--${tier})`;
+    const glow = `var(--${tier}-glow)`;
     html += `
-      <div class="credits-row" style="margin-top:6px">
-        <div class="credits-header">
-          <span class="credits-label"><span class="icon">&#x26A1;</span>Extra Usage</span>
+      <div class="usage-row">
+        <div class="usage-row-header">
+          <span class="usage-row-name"><span class="dot" style="background:${color};box-shadow:0 0 4px ${glow}"></span>Extra Usage</span>
           <span class="credits-amount">
             <span class="used">&euro;${(ex.used_credits / 100).toFixed(2)}</span><span class="sep">/</span><span class="total">&euro;${(ex.monthly_limit / 100).toFixed(0)}</span>
           </span>
         </div>
-        <div class="progress-track" style="margin-top:8px"><div class="progress-fill ${tier}" style="width:${ex.utilization}%"></div></div>
+        <div class="progress-track"><div class="progress-fill ${tier}" style="width:${ex.utilization}%"></div></div>
         <div class="credits-pct">${ex.utilization.toFixed(1)}%</div>
       </div>`;
   }
