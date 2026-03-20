@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BurnRate — Mockup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --accent: #E87B35;
+    --accent-glow: rgba(232, 123, 53, 0.25);
+    --accent-dim: rgba(232, 123, 53, 0.08);
+    --surface: #0f1117;
+    --card: #1a1d27;
+    --card-elevated: #1e2230;
+    --border: #2a2d37;
+    --border-subtle: #22252e;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-tertiary: #5a6275;
+    --green: #22c55e;
+    --green-glow: rgba(34, 197, 94, 0.2);
+    --orange: #E87B35;
+    --orange-glow: rgba(232, 123, 53, 0.2);
+    --red: #ef4444;
+    --red-glow: rgba(239, 68, 68, 0.2);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #08090c;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* === MOCKUP WRAPPER (for demo only) === */
+  .mockup-stage {
+    position: relative;
+    width: 420px;
+    min-height: 500px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding-top: 48px;
+  }
+
+  .mockup-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+
+  .mockup-label span {
+    color: var(--accent);
+  }
+
+  /* === COMPACT PILL === */
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    height: 52px;
+    padding: 0 4px 0 14px;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.25s, box-shadow 0.25s, transform 0.15s;
+    flex-shrink: 0;
+  }
+
+  .pill::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--accent-dim) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .pill:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px var(--accent-glow), inset 0 0 20px var(--accent-dim);
+    transform: translateY(-1px);
+  }
+
+  .pill:hover::before { opacity: 1; }
+
+  .pill:active { transform: translateY(0) scale(0.99); }
+
+  .pill-fire {
+    font-size: 18px;
+    margin-right: 8px;
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 0 4px rgba(232, 123, 53, 0.5));
+    animation: fire-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes fire-pulse {
+    0%, 100% { filter: drop-shadow(0 0 4px rgba(232, 123, 53, 0.4)); }
+    50% { filter: drop-shadow(0 0 8px rgba(232, 123, 53, 0.7)); }
+  }
+
+  .pill-provider {
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--text-primary);
+    margin-right: 12px;
+    position: relative;
+    z-index: 1;
+    letter-spacing: 0.01em;
+  }
+
+  .pill-metrics {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .pill-metric {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border-subtle);
+  }
+
+  .pill-metric + .pill-metric {
+    margin-left: 4px;
+  }
+
+  .pill-metric-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .pill-metric-label {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.04em;
+    font-weight: 400;
+  }
+
+  /* === EXPANDED PANEL === */
+  .panel {
+    width: 340px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.4),
+      0 0 0 1px var(--border-subtle),
+      0 0 60px -10px var(--accent-glow);
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+    transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    position: absolute;
+    top: 80px;
+  }
+
+  .panel.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: all;
+  }
+
+  .pill.hidden-pill {
+    opacity: 0;
+    transform: scale(0.95);
+    pointer-events: none;
+  }
+
+  /* Title bar */
+  .titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: linear-gradient(180deg, var(--card-elevated) 0%, var(--card) 100%);
+  }
+
+  .titlebar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .titlebar-fire {
+    font-size: 14px;
+    filter: drop-shadow(0 0 4px rgba(232, 123, 53, 0.4));
+  }
+
+  .titlebar-name {
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .titlebar-actions {
+    display: flex;
+    gap: 2px;
+  }
+
+  .titlebar-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+
+  .titlebar-btn:hover {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  .titlebar-btn.close:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--red);
+  }
+
+  /* Usage body */
+  .usage-body {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .usage-section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 2px;
+  }
+
+  /* Usage row */
+  .usage-row {
+    background: var(--surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 10px 12px;
+    transition: border-color 0.2s;
+  }
+
+  .usage-row:hover {
+    border-color: var(--border);
+  }
+
+  .usage-row-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .usage-row-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .usage-row-name .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .usage-row-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .usage-row-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+  }
+
+  .usage-row-reset {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+
+  .usage-row-reset svg {
+    width: 10px;
+    height: 10px;
+    vertical-align: -1px;
+    margin-right: 3px;
+    opacity: 0.5;
+  }
+
+  /* Progress bar */
+  .progress-track {
+    width: 100%;
+    height: 4px;
+    background: var(--card);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+  }
+
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: -1px;
+    bottom: -1px;
+    width: 6px;
+    border-radius: 0 2px 2px 0;
+    filter: blur(3px);
+  }
+
+  .progress-fill.green { background: var(--green); }
+  .progress-fill.green::after { background: var(--green); }
+
+  .progress-fill.orange { background: var(--orange); }
+  .progress-fill.orange::after { background: var(--orange); }
+
+  .progress-fill.red { background: var(--red); }
+  .progress-fill.red::after { background: var(--red); }
+
+  /* Extra credits special row */
+  .credits-row {
+    background: linear-gradient(135deg, var(--surface) 0%, rgba(232, 123, 53, 0.03) 100%);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+
+  .credits-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 2px;
+  }
+
+  .credits-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .credits-label .icon {
+    font-size: 11px;
+    opacity: 0.7;
+  }
+
+  .credits-amount {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+
+  .credits-amount .used {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .credits-amount .sep {
+    color: var(--text-tertiary);
+    margin: 0 2px;
+  }
+
+  .credits-amount .total {
+    color: var(--text-tertiary);
+    font-weight: 400;
+  }
+
+  .credits-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+    text-align: right;
+  }
+
+  /* Inactive row */
+  .usage-row.inactive {
+    opacity: 0.4;
+    border-style: dashed;
+  }
+
+  .usage-row.inactive .usage-row-value {
+    color: var(--text-tertiary);
+  }
+
+  /* Footer */
+  .panel-footer {
+    display: flex;
+    gap: 6px;
+    padding: 0 14px 14px;
+  }
+
+  .footer-btn {
+    flex: 1;
+    height: 34px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+  }
+
+  .footer-btn:hover {
+    background: var(--card-elevated);
+    border-color: var(--accent);
+    color: var(--text-primary);
+  }
+
+  .footer-btn svg {
+    width: 13px;
+    height: 13px;
+    opacity: 0.6;
+  }
+
+  .footer-btn:hover svg { opacity: 1; }
+
+  .footer-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .footer-btn.primary:hover {
+    background: #d06b28;
+    box-shadow: 0 0 16px var(--accent-glow);
+  }
+
+  /* === SETTINGS OVERLAY === */
+  .settings-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 17, 23, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+    z-index: 10;
+  }
+
+  .settings-overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .settings-content {
+    flex: 1;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+  }
+
+  .settings-title {
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+  }
+
+  .settings-title svg {
+    width: 16px;
+    height: 16px;
+    color: var(--accent);
+  }
+
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .field-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 0.03em;
+  }
+
+  .field-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .field-input {
+    width: 100%;
+    height: 36px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 0 10px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .field-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+  }
+
+  .field-input::placeholder {
+    color: var(--text-tertiary);
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .field-input-wrap .toggle-vis {
+    position: absolute;
+    right: 6px;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: color 0.15s;
+  }
+
+  .field-input-wrap .toggle-vis:hover { color: var(--accent); }
+
+  .field-input-wrap .toggle-vis svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .settings-hint {
+    background: var(--accent-dim);
+    border: 1px solid rgba(232, 123, 53, 0.15);
+    border-radius: 8px;
+    padding: 9px 10px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+  }
+
+  .settings-hint strong {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .settings-hint code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    background: var(--surface);
+    border-radius: 3px;
+    padding: 1px 4px;
+    color: var(--text-primary);
+  }
+
+  .settings-footer {
+    display: flex;
+    gap: 6px;
+    padding: 0 14px 14px;
+  }
+
+  /* === ANIMATIONS === */
+  @keyframes slide-in-row {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .panel.visible .usage-row,
+  .panel.visible .credits-row {
+    animation: slide-in-row 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .panel.visible .usage-row:nth-child(1) { animation-delay: 0.05s; }
+  .panel.visible .usage-row:nth-child(2) { animation-delay: 0.1s; }
+  .panel.visible .usage-row:nth-child(3) { animation-delay: 0.15s; }
+  .panel.visible .usage-row:nth-child(4) { animation-delay: 0.2s; }
+  .panel.visible .credits-row { animation-delay: 0.25s; }
+
+  @keyframes progress-fill-in {
+    from { width: 0 !important; }
+  }
+
+  .panel.visible .progress-fill {
+    animation: progress-fill-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+  }
+
+  /* === REFRESH SPIN === */
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .refreshing svg {
+    animation: spin 0.6s linear infinite;
+  }
+
+  /* === STATUS DOT === */
+  .status-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green-glow);
+    animation: status-pulse 2.5s ease-in-out infinite;
+    margin-left: auto;
+    margin-right: 2px;
+  }
+
+  @keyframes status-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* === DEMO CONTROLS (not part of actual widget) === */
+  .demo-hint {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="mockup-stage">
+  <div class="mockup-label"><span>BurnRate</span> &mdash; Widget Mockup</div>
+
+  <!-- COMPACT PILL -->
+  <div class="pill" id="pill" onclick="expandPanel()">
+    <span class="pill-fire">&#x1F525;</span>
+    <span class="pill-provider">Claude</span>
+    <div class="pill-metrics">
+      <div class="pill-metric">
+        <span class="pill-metric-value" style="color: var(--green)">11%</span>
+        <span class="pill-metric-label">5h</span>
+      </div>
+      <div class="pill-metric">
+        <span class="pill-metric-value" style="color: var(--green)">1%</span>
+        <span class="pill-metric-label">7d</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPANDED PANEL -->
+  <div class="panel" id="panel">
+    <!-- Title bar -->
+    <div class="titlebar">
+      <div class="titlebar-left">
+        <span class="titlebar-fire">&#x1F525;</span>
+        <span class="titlebar-name">BurnRate</span>
+      </div>
+      <div class="titlebar-actions">
+        <div class="status-dot"></div>
+        <button class="titlebar-btn" onclick="collapsePanel()" title="Minimize">&#x2500;</button>
+        <button class="titlebar-btn close" onclick="collapsePanel()" title="Close to tray">&#x2715;</button>
+      </div>
+    </div>
+
+    <!-- Usage rows -->
+    <div class="usage-body">
+      <div class="usage-section-label">Rate Limits</div>
+
+      <!-- 5-Hour Window -->
+      <div class="usage-row">
+        <div class="usage-row-header">
+          <span class="usage-row-name">
+            <span class="dot" style="background: var(--green); box-shadow: 0 0 4px var(--green-glow)"></span>
+            5-Hour Window
+          </span>
+          <span class="usage-row-value" style="color: var(--green)">11%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill green" style="width: 11%"></div>
+        </div>
+        <div class="usage-row-meta">
+          <span class="usage-row-reset">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 8a6.5 6.5 0 1 1 1 3.5"/><path d="M1 5v3.5H4.5"/></svg>
+            Resets in 4h 12m
+          </span>
+        </div>
+      </div>
+
+      <!-- 7-Day Window -->
+      <div class="usage-row">
+        <div class="usage-row-header">
+          <span class="usage-row-name">
+            <span class="dot" style="background: var(--green); box-shadow: 0 0 4px var(--green-glow)"></span>
+            7-Day Window
+          </span>
+          <span class="usage-row-value" style="color: var(--green)">1%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill green" style="width: 1%"></div>
+        </div>
+        <div class="usage-row-meta">
+          <span class="usage-row-reset">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 8a6.5 6.5 0 1 1 1 3.5"/><path d="M1 5v3.5H4.5"/></svg>
+            Resets Mar 26
+          </span>
+        </div>
+      </div>
+
+      <!-- Opus -->
+      <div class="usage-row inactive">
+        <div class="usage-row-header">
+          <span class="usage-row-name">
+            <span class="dot" style="background: var(--text-tertiary)"></span>
+            Opus
+          </span>
+          <span class="usage-row-value" style="color: var(--text-tertiary)">&mdash;</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill green" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Sonnet -->
+      <div class="usage-row inactive">
+        <div class="usage-row-header">
+          <span class="usage-row-name">
+            <span class="dot" style="background: var(--text-tertiary)"></span>
+            Sonnet
+          </span>
+          <span class="usage-row-value" style="color: var(--text-tertiary)">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill green" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <div class="usage-section-label" style="margin-top: 4px;">Extra Usage</div>
+
+      <!-- Extra Credits -->
+      <div class="credits-row">
+        <div class="credits-header">
+          <span class="credits-label">
+            <span class="icon">&#x26A1;</span>
+            Credits
+          </span>
+          <span class="credits-amount">
+            <span class="used">257</span><span class="sep">/</span><span class="total">4,000</span>
+          </span>
+        </div>
+        <div class="progress-track" style="margin-top: 8px;">
+          <div class="progress-fill green" style="width: 6.4%"></div>
+        </div>
+        <div class="credits-pct">6.4%</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="panel-footer">
+      <button class="footer-btn" id="settingsBtn" onclick="openSettings()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.1 3.1l1.4 1.4M11.5 11.5l1.4 1.4M3.1 12.9l1.4-1.4M11.5 4.5l1.4-1.4"/></svg>
+        Settings
+      </button>
+      <button class="footer-btn" id="refreshBtn" onclick="simulateRefresh()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 8a6.5 6.5 0 1 1 1 3.5"/><path d="M1 5v3.5H4.5"/></svg>
+        Refresh
+      </button>
+    </div>
+
+    <!-- Settings Overlay -->
+    <div class="settings-overlay" id="settingsOverlay">
+      <div class="titlebar">
+        <div class="titlebar-left">
+          <span class="titlebar-name">Settings</span>
+        </div>
+        <div class="titlebar-actions">
+          <button class="titlebar-btn close" onclick="closeSettings()">&#x2715;</button>
+        </div>
+      </div>
+      <div class="settings-content">
+        <div class="field-group">
+          <label class="field-label">Session Key</label>
+          <div class="field-input-wrap">
+            <input type="password" class="field-input" id="sessionKeyInput" placeholder="sk-ant-sid02-..." value="sk-ant-sid02-7al1lshx...ThXBmN24Ir">
+            <button class="toggle-vis" onclick="toggleVis(this)" title="Show/Hide">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Organization ID</label>
+          <div class="field-input-wrap">
+            <input type="text" class="field-input" placeholder="5f43ca54-1f9d-..." value="5f43ca54-1f9d-4aa0-8f81-5f0069a3185c">
+          </div>
+        </div>
+
+        <div class="settings-hint">
+          <strong>How to find these:</strong><br>
+          Open <code>claude.ai</code> &rarr; DevTools (<code>F12</code>) &rarr; Application &rarr; Cookies &rarr; copy <code>sessionKey</code><br><br>
+          Org ID is in the URL: <code>claude.ai/settings</code> &rarr; check network requests for <code>/organizations/{id}/</code>
+        </div>
+      </div>
+
+      <div class="settings-footer">
+        <button class="footer-btn" onclick="closeSettings()">Cancel</button>
+        <button class="footer-btn primary" onclick="closeSettings()">
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="demo-hint">Click the pill to expand &middot; Interactive mockup</div>
+
+<script>
+  const pill = document.getElementById('pill');
+  const panel = document.getElementById('panel');
+  const settingsOverlay = document.getElementById('settingsOverlay');
+
+  function expandPanel() {
+    pill.classList.add('hidden-pill');
+    setTimeout(() => {
+      panel.classList.add('visible');
+    }, 120);
+  }
+
+  function collapsePanel() {
+    closeSettings();
+    panel.classList.remove('visible');
+    setTimeout(() => {
+      pill.classList.remove('hidden-pill');
+    }, 200);
+  }
+
+  function openSettings() {
+    settingsOverlay.classList.add('visible');
+  }
+
+  function closeSettings() {
+    settingsOverlay.classList.remove('visible');
+  }
+
+  function toggleVis(btn) {
+    const input = btn.parentElement.querySelector('input');
+    if (input.type === 'password') {
+      input.type = 'text';
+      btn.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/><line x1="2" y1="14" x2="14" y2="2"/></svg>';
+    } else {
+      input.type = 'password';
+      btn.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/></svg>';
+    }
+  }
+
+  function simulateRefresh() {
+    const btn = document.getElementById('refreshBtn');
+    btn.classList.add('refreshing');
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.classList.remove('refreshing');
+      btn.disabled = false;
+    }, 800);
+  }
+</script>
+</body>
+</html>
