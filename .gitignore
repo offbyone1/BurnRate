@@ -1,0 +1,17 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/binaries/*
+!src-tauri/binaries/.gitkeep
+.vscode/
+.env
+*.log
+app-icon.png
+
+# Secrets — never commit signing keys or credential files
+*.key
+*.pem
+*.p12
+*.pfx
+.credentials.json

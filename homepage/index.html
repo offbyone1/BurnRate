@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BurnRate — Claude &amp; Codex Usage Widget for Windows</title>
+  <meta name="description" content="BurnRate: always-on-top Windows desktop widget showing your Claude and Codex limits at a glance. 5-hour and 7-day windows for Claude, primary and secondary for Codex. Zero setup.">
+  <meta name="keywords" content="burnrate, claude usage widget, codex usage, claude subscription tracker, always on top widget, windows desktop widget, tauri rust">
+  <meta property="og:title" content="BurnRate — Claude &amp; Codex Usage Widget">
+  <meta property="og:description" content="A tiny always-on-top widget that shows your Claude and Codex limits at a glance. Zero setup — reads the logins you already have.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://offbyone.cloud">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="BurnRate — Claude &amp; Codex Usage Widget">
+  <meta name="twitter:description" content="A tiny always-on-top widget that shows your Claude and Codex limits at a glance. Zero setup — reads the logins you already have.">
+  <meta property="og:image" content="https://offbyone.cloud/og-image.png">
+  <meta name="twitter:image" content="https://offbyone.cloud/og-image.png">
+  <link rel="icon" type="image/png" href="burnrate-logo.png">
+  <link rel="canonical" href="https://offbyone.cloud">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "BurnRate",
+    "description": "Always-on-top Windows desktop widget that displays your Claude and Codex usage — 5-hour window, 7-day window for Claude, primary and secondary for Codex — in a compact, glanceable pill.",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Windows",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "softwareVersion": "0.6.0",
+    "author": { "@type": "Person", "name": "offbyone1", "url": "https://github.com/offbyone1" },
+    "license": "https://opensource.org/licenses/MIT",
+    "url": "https://offbyone.cloud",
+    "downloadUrl": "https://github.com/offbyone1/BurnRate/releases",
+    "featureList": [
+      "Always-on-top compact usage pill",
+      "Claude and Codex dual-source support",
+      "Expandable panel with progress bars and reset timers",
+      "Auto-refresh every 60 seconds",
+      "System tray integration",
+      "Dark and light themes",
+      "Launch-on-login autostart",
+      "Built-in updater"
+    ]
+  }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0a0a0a;
+      --bg-card:      #111118;
+      --border:       #1e1e2e;
+      --border-hover: #2e2e45;
+      --text-1:       #f3f4f6;
+      --text-2:       #9ca3af;
+      --text-3:       #6b7280;
+      --accent:       #c15f3c;
+      --accent-br:    #38BDF8;
+      --c-claude:     #c15f3c;
+      --c-codex:      #74aa9c;
+      --c-opencode:   #818CF8;
+      --c-amp:        #F59E0B;
+      --c-pi:         #A78BFA;
+      --font-display: 'Barlow Condensed', 'Impact', sans-serif;
+      --font-body:    'IBM Plex Sans', system-ui, sans-serif;
+      --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+      --max:          1200px;
+      --gap:          96px;
+      --r:            12px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text-1);
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0,0,0,0); border: 0;
+    }
+
+    .skip-link {
+      position: absolute; top: -100%; left: 0;
+      background: var(--accent); color: #000;
+      padding: 8px 16px; font-weight: 600; z-index: 1000;
+      border-radius: 0 0 8px 0;
+    }
+    .skip-link:focus { top: 0; }
+
+    .wrap {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    section { padding: var(--gap) 0; }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+    }
+
+    /* ── SECTION LABELS ── */
+    .label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      opacity: 0.75;
+      margin-bottom: 14px;
+    }
+
+    .section-h {
+      font-size: clamp(26px, 4vw, 38px);
+      font-weight: 600;
+      margin-bottom: 14px;
+      line-height: 1.2;
+    }
+
+    .section-p {
+      font-size: 17px;
+      color: var(--text-2);
+      max-width: 540px;
+      line-height: 1.7;
+    }
+
+    /* ─────────────────────────────────────
+       NAV
+    ───────────────────────────────────── */
+    .site-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(10,10,10,.75);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(30,30,46,.5);
+      transition: background .3s;
+    }
+    .nav-inner {
+      max-width: var(--max); margin: 0 auto;
+      padding: 0 24px; height: 52px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .nav-left { display: flex; align-items: center; gap: 6px; }
+
+    .nav-brand {
+      font-family: var(--font-display); font-weight: 700; font-size: 1.1rem;
+      color: var(--text-1); text-decoration: none; letter-spacing: .02em;
+      display: inline-flex; align-items: center; gap: 8px;
+      margin-right: 8px;
+    }
+    .nav-brand:hover { color: var(--accent); }
+    .nav-logo { height: 28px; width: auto; }
+
+    /* Product switcher */
+    .product-switch {
+      display: inline-flex;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .product-tab {
+      font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+      padding: 5px 14px; border-radius: 6px;
+      border: none; cursor: pointer;
+      background: transparent; color: var(--text-3);
+      transition: all .2s;
+    }
+    .product-tab:hover { color: var(--text-2); }
+    .product-tab.active-bbq {
+      background: rgba(193,95,60,.15); color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(193,95,60,.2);
+    }
+    .product-tab.active-br {
+      background: rgba(56,189,248,.12); color: var(--accent-br);
+      box-shadow: 0 0 0 1px rgba(56,189,248,.2);
+    }
+
+    .nav-links { display: flex; align-items: center; gap: 24px; }
+    .nav-links a {
+      font-size: .85rem; color: var(--text-2); text-decoration: none;
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--text-1); }
+    .nav-gh {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 6px;
+      border: 1px solid var(--border); background: rgba(255,255,255,.04);
+      font-weight: 500; transition: border-color .2s, background .2s;
+    }
+    .nav-gh:hover { border-color: var(--accent); background: rgba(193,95,60,.08); color: var(--text-1); }
+    .nav-gh svg { opacity: .8; }
+
+    /* ─────────────────────────────────────
+       PAGE CONTAINERS
+    ───────────────────────────────────── */
+    .product-page { display: none; }
+    .product-page.active { display: block; }
+
+    /* ─────────────────────────────────────
+       HERO (shared base)
+    ───────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 80px 24px 64px;
+      position: relative;
+      overflow: hidden;
+      padding-top: 52px;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+      background-size: 64px 64px;
+      pointer-events: none;
+    }
+
+    .hero-inner { position: relative; z-index: 1; max-width: 960px; }
+
+    .hero-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+      opacity: 0;
+      animation: fadeUp .45s ease forwards .1s;
+    }
+
+    .hero-h1 {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: clamp(46px, 8vw, 94px);
+      line-height: 0.9;
+      letter-spacing: -0.025em;
+      text-transform: uppercase;
+      margin-bottom: 36px;
+    }
+
+    .hero-h1 .solid {
+      display: block;
+      color: var(--text-1);
+      opacity: 0;
+      animation: fadeUp .45s ease forwards;
+    }
+    .hero-h1 .solid:nth-child(1) { animation-delay: .2s; }
+    .hero-h1 .solid:nth-child(3) { animation-delay: .4s; }
+
+    .hero-h1 .stroke {
+      display: block;
+      color: transparent;
+      opacity: 0;
+      animation: fadeUp .45s ease forwards .3s;
+    }
+
+    .hero-sub {
+      font-size: clamp(15px, 2.2vw, 18px);
+      color: var(--text-2);
+      max-width: 520px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+      opacity: 0;
+      animation: fadeUp .45s ease forwards .5s;
+    }
+
+    /* Hero glow — per product */
+    #page-bbq .hero::after {
+      content: '';
+      position: absolute;
+      top: 35%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 700px; height: 500px;
+      background: radial-gradient(ellipse, rgba(232,123,53,0.06) 0%, transparent 68%);
+      pointer-events: none;
+    }
+    #page-bbq .hero-eyebrow { color: var(--accent); }
+    #page-bbq .hero-h1 .stroke { -webkit-text-stroke: 2.5px var(--accent); }
+
+    #page-br .hero::after {
+      content: '';
+      position: absolute;
+      top: 35%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 700px; height: 500px;
+      background: radial-gradient(ellipse, rgba(56,189,248,0.05) 0%, transparent 68%);
+      pointer-events: none;
+    }
+    #page-br .hero-eyebrow { color: var(--accent-br); }
+    #page-br .hero-h1 .stroke { -webkit-text-stroke: 2.5px var(--accent-br); }
+    #page-br .label { color: var(--accent-br); }
+
+    .hero-logo {
+      width: 140px; height: auto; margin: 0 auto 16px;
+      display: block;
+    }
+    #page-bbq .hero-logo { filter: drop-shadow(0 0 24px rgba(193,95,60,.4)); }
+    #page-br .hero-logo { filter: drop-shadow(0 0 24px rgba(56,189,248,.35)); }
+
+    /* Install command */
+    .cmd-block {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: #0d0d18;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 18px;
+      margin-bottom: 26px;
+      cursor: pointer;
+      transition: border-color .2s, box-shadow .2s;
+      opacity: 0;
+      animation: fadeUp .45s ease forwards .6s;
+    }
+    .cmd-block:hover {
+      border-color: rgba(232,123,53,.35);
+      box-shadow: 0 0 0 1px rgba(232,123,53,.12), 0 8px 40px rgba(0,0,0,.45);
+    }
+    .cmd-block:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .cmd-prompt { font-family: var(--font-mono); font-size: 14px; color: var(--accent); user-select: none; }
+    .cmd-text   { font-family: var(--font-mono); font-size: 14px; color: var(--text-1); white-space: nowrap; user-select: text; }
+
+    .copy-btn {
+      display: flex; align-items: center; gap: 5px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 10px;
+      color: var(--text-3);
+      font-family: var(--font-mono); font-size: 11px;
+      cursor: pointer;
+      transition: background .15s, color .15s, border-color .15s;
+      min-height: 36px; min-width: 64px; justify-content: center;
+      flex-shrink: 0;
+    }
+    .copy-btn:hover { background: rgba(255,255,255,.1); color: var(--text-1); border-color: var(--border-hover); }
+    .copy-btn:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .copy-btn.copied { color: #4ade80; border-color: rgba(74,222,128,.3); }
+
+    /* Pills */
+    .trust-row {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      justify-content: center; margin-bottom: 32px;
+      opacity: 0; animation: fadeUp .45s ease forwards .7s;
+    }
+
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 5px 13px;
+      font-size: 12px; font-family: var(--font-mono);
+      color: var(--text-2);
+      cursor: default;
+    }
+    .pill-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    #page-bbq .pill-dot { background: var(--accent); }
+    #page-br .pill-dot { background: var(--accent-br); }
+
+    .providers-row {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      justify-content: center;
+      opacity: 0; animation: fadeUp .45s ease forwards .85s;
+    }
+
+    .p-pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 5px 13px; border-radius: 100px;
+      font-size: 12px; font-weight: 500;
+      border: 1px solid transparent;
+      transition: filter .15s;
+      cursor: default;
+    }
+    .p-pill:hover { filter: brightness(1.2); }
+    .p-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ─────────────────────────────────────
+       DASHBOARD PREVIEW
+    ───────────────────────────────────── */
+    .preview-wrap {
+      max-width: 980px; margin: 0 auto;
+      border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden;
+      background: #0e1118;
+      box-shadow: 0 40px 100px rgba(0,0,0,.6);
+    }
+
+    .win-bar {
+      display: flex; align-items: center; gap: 7px;
+      padding: 11px 16px;
+      background: #131720;
+      border-bottom: 1px solid var(--border);
+    }
+    .win-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .win-title { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); margin-left: 8px; }
+
+    .dash-body { padding: 18px; }
+
+    .dash-cards {
+      display: grid; grid-template-columns: repeat(4,1fr);
+      gap: 10px; margin-bottom: 14px;
+    }
+    .dash-card { background: #141b24; border: 1px solid #1e2836; border-radius: 8px; padding: 14px; }
+    .dc-label { font-family: var(--font-mono); font-size: 9px; color: #5c6a7a; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 5px; }
+    .dc-val   { font-family: var(--font-mono); font-size: 20px; font-weight: 600; color: #e0e8f0; }
+    .dc-sub   { font-family: var(--font-mono); font-size: 9px; color: #5c6a7a; margin-top: 3px; }
+
+    .dash-charts { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin-bottom: 14px; }
+
+    .d-chart { background: #141b24; border: 1px solid #1e2836; border-radius: 8px; padding: 14px; }
+    .d-chart-title { font-family: var(--font-mono); font-size: 9px; color: #5c6a7a; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 10px; }
+
+    .bars { display: flex; align-items: flex-end; gap: 3px; height: 76px; }
+    .bar  { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 1px; border-radius: 2px; overflow: hidden; }
+    .bs   { border-radius: 1px; }
+
+    .donut-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .donut {
+      width: 76px; height: 76px; border-radius: 50%; flex-shrink: 0;
+      background: conic-gradient(
+        #c15f3c 0% 43%, #74aa9c 43% 63%,
+        #6366F1 63% 77%, #F59E0B 77% 90%, #8B5CF6 90% 100%
+      );
+      position: relative;
+    }
+    .donut::after { content: ''; position: absolute; inset: 18px; background: #141b24; border-radius: 50%; }
+    .d-legend { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+    .d-leg-item { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 9px; color: #5c6a7a; }
+    .d-leg-dot  { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .d-leg-pct  { margin-left: auto; }
+
+    .d-heatmap { background: #141b24; border: 1px solid #1e2836; border-radius: 8px; padding: 14px; }
+    .hmap-grid { display: grid; grid-template-columns: repeat(13,1fr); gap: 3px; margin-top: 6px; }
+    .hcell { aspect-ratio: 1; border-radius: 2px; }
+
+    /* ─────────────────────────────────────
+       HOW IT WORKS
+    ───────────────────────────────────── */
+    .steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; margin-top: 48px; }
+
+    .step {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r); padding: 32px 28px;
+      transition: border-color .2s, transform .2s;
+    }
+    .step:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+    .step-num {
+      font-family: var(--font-display);
+      font-size: 60px; font-weight: 900; line-height: 1;
+      color: transparent;
+      -webkit-text-stroke: 1.5px var(--accent);
+      display: block; margin-bottom: 20px;
+    }
+    .step-title { font-size: 17px; font-weight: 600; margin-bottom: 10px; }
+    .step-desc  { font-size: 14px; color: var(--text-2); line-height: 1.65; }
+    .step-code  {
+      display: inline-block; margin-top: 14px;
+      font-family: var(--font-mono); font-size: 12px; color: var(--text-1);
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      border-left: 2px solid var(--accent);
+      border-radius: 6px; padding: 7px 12px;
+    }
+
+    /* BurnRate steps use cyan accent */
+    #page-br .step:hover { border-color: var(--accent-br); }
+    #page-br .step-num { -webkit-text-stroke-color: var(--accent-br); }
+    #page-br .step-code { border-left-color: var(--accent-br); }
+
+    /* ─────────────────────────────────────
+       FEATURES
+    ───────────────────────────────────── */
+    .features { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-top: 48px; }
+
+    .feat {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r); padding: 28px;
+      transition: border-color .2s, transform .2s;
+    }
+    .feat:hover { border-color: var(--border-hover); transform: translateY(-2px); }
+
+    .feat-icon {
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px;
+    }
+    .feat-icon svg { width: 18px; height: 18px; color: var(--accent); }
+    .feat-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+    .feat-desc  { font-size: 13px; color: var(--text-2); line-height: 1.65; }
+
+    #page-br .feat:hover { border-color: rgba(56,189,248,.25); }
+    #page-br .feat-icon {
+      background: rgba(56,189,248,.07);
+      border-color: rgba(56,189,248,.18);
+    }
+    #page-br .feat-icon svg { color: var(--accent-br); }
+
+    /* ─────────────────────────────────────
+       PROVIDERS
+    ───────────────────────────────────── */
+    .providers-grid {
+      display: grid; grid-template-columns: repeat(6,1fr);
+      gap: 14px; margin-top: 48px;
+    }
+
+    .prov-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r); padding: 22px 18px;
+      transition: border-color .2s, transform .2s;
+    }
+    .prov-card:hover { transform: translateY(-2px); }
+
+    .prov-bar  { width: 28px; height: 3px; border-radius: 2px; margin-bottom: 16px; }
+    .prov-name { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+    .prov-path { font-family: var(--font-mono); font-size: 9px; color: var(--text-3); word-break: break-all; line-height: 1.55; margin-bottom: 12px; }
+    .prov-badge { display: inline-block; font-family: var(--font-mono); font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+
+    /* ─────────────────────────────────────
+       PRIVACY
+    ───────────────────────────────────── */
+    .privacy-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; margin-top: 48px; }
+
+    .priv {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r); padding: 28px;
+    }
+    .priv-icon {
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px; margin-bottom: 16px;
+    }
+    #page-bbq .priv-icon {
+      background: rgba(232,123,53,.07);
+      border: 1px solid rgba(232,123,53,.2);
+    }
+    #page-br .priv-icon {
+      background: rgba(56,189,248,.07);
+      border: 1px solid rgba(56,189,248,.2);
+    }
+    #page-br .priv-icon svg { stroke: var(--accent-br) !important; }
+    .priv-title { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
+    .priv-desc  { font-size: 13px; color: var(--text-2); line-height: 1.65; }
+
+    /* ─────────────────────────────────────
+       CLI
+    ───────────────────────────────────── */
+    .cli-wrap {
+      max-width: 680px; margin-top: 40px;
+      background: #08080f;
+      border: 1px solid var(--border);
+      border-radius: var(--r); overflow: hidden;
+    }
+    .cli-bar { display: flex; gap: 6px; padding: 10px 14px; background: #0d0d18; border-bottom: 1px solid var(--border); }
+    .cli-bar-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .cli-body { padding: 22px 24px; }
+    .cli-line { display: flex; gap: 14px; margin-bottom: 10px; font-family: var(--font-mono); font-size: 13px; }
+    .cli-line:last-child { margin-bottom: 0; }
+    .cli-$ { color: var(--accent); user-select: none; flex-shrink: 0; }
+    .cli-cmd { color: #93c5fd; }
+    .cli-cmt { color: var(--text-3); font-style: italic; }
+
+    /* ─────────────────────────────────────
+       FINAL CTA
+    ───────────────────────────────────── */
+    #cta { text-align: center; padding: var(--gap) 0 80px; }
+
+    .cta-h {
+      font-family: var(--font-display);
+      font-size: clamp(52px, 9vw, 104px);
+      font-weight: 900; line-height: .9;
+      letter-spacing: -0.025em; text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .cta-h .solid  { display: block; color: var(--text-1); }
+    .cta-h .stroke-bbq { display: block; color: transparent; -webkit-text-stroke: 2px var(--accent); }
+    .cta-h .stroke-br  { display: block; color: transparent; -webkit-text-stroke: 2px var(--accent-br); }
+
+    .cta-p { font-size: 16px; color: var(--text-2); margin-bottom: 36px; }
+
+    .gh-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      color: var(--text-2); text-decoration: none;
+      font-family: var(--font-mono); font-size: 13px;
+      border: 1px solid var(--border); padding: 9px 18px; border-radius: 8px;
+      transition: color .2s, border-color .2s; margin-top: 18px;
+    }
+    .gh-link:hover { color: var(--text-1); border-color: var(--border-hover); }
+
+    /* ─────────────────────────────────────
+       FOOTER
+    ───────────────────────────────────── */
+    footer { border-top: 1px solid var(--border); padding: 30px 0; }
+    .ft-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
+    .ft-brand { font-family: var(--font-mono); font-size: 14px; font-weight: 500; }
+    .ft-links { display: flex; gap: 22px; flex-wrap: wrap; }
+    .ft-links a { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); text-decoration: none; transition: color .2s; }
+    .ft-links a:hover { color: var(--text-1); }
+    .ft-credit { font-family: var(--font-mono); font-size: 12px; color: var(--text-3); }
+
+    /* ─────────────────────────────────────
+       BURNRATE WIDGET MOCK
+    ───────────────────────────────────── */
+    .br-preview-center {
+      display: flex; flex-direction: column; gap: 20px;
+      align-items: center; max-width: 380px; margin: 0 auto;
+    }
+
+    .br-mock-pill {
+      display: inline-flex; align-items: center; gap: 12px;
+      background: #111118;
+      border: 1px solid #1e1e2e;
+      border-radius: 32px;
+      padding: 14px 22px 14px 18px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.5);
+    }
+    .br-mock-fire { font-size: 22px; line-height: 1; }
+    .br-mock-label {
+      font-family: var(--font-mono); font-size: 13px; font-weight: 500;
+      color: var(--text-2); margin-right: 4px;
+    }
+    .br-mock-metrics { display: flex; gap: 16px; }
+    .br-mock-metric { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .br-mock-val { font-family: var(--font-mono); font-size: 18px; font-weight: 600; }
+    .br-mock-sub { font-family: var(--font-mono); font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; }
+    .br-mock-grip { display: grid; grid-template-columns: repeat(2, 4px); gap: 3px; margin-left: 6px; }
+    .br-mock-grip span { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,.1); }
+
+    .br-mock-panel {
+      background: #111118;
+      border: 1px solid #1e1e2e;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+      width: 320px; overflow: hidden;
+    }
+    .br-panel-titlebar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px;
+      border-bottom: 1px solid #1e1e2e;
+    }
+    .br-panel-title {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+    }
+    .br-panel-dots { display: flex; gap: 6px; }
+    .br-panel-dots span {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.06);
+    }
+    .br-panel-dots .green { background: #22c55e; border-color: #16a34a; }
+    .br-panel-body { padding: 16px; }
+    .br-panel-section-label {
+      font-family: var(--font-mono); font-size: 9px;
+      color: var(--text-3); text-transform: uppercase;
+      letter-spacing: .12em; margin-bottom: 14px;
+    }
+    .br-usage-row { margin-bottom: 16px; }
+    .br-usage-row:last-child { margin-bottom: 0; }
+    .br-usage-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .br-usage-name { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; }
+    .br-usage-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .br-usage-pct { font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+    .br-progress { height: 4px; border-radius: 2px; background: rgba(255,255,255,.06); overflow: hidden; }
+    .br-progress-fill { height: 100%; border-radius: 2px; }
+    .br-usage-meta {
+      display: flex; align-items: center; gap: 4px;
+      font-family: var(--font-mono); font-size: 9px; color: var(--text-3); margin-top: 5px;
+    }
+    .br-usage-meta svg { width: 10px; height: 10px; }
+
+    /* BurnRate CTA buttons */
+    .br-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 22px; border-radius: 8px;
+      font-family: var(--font-mono); font-size: 13px; font-weight: 500;
+      text-decoration: none; transition: all .2s;
+    }
+    .br-btn svg { width: 15px; height: 15px; }
+    .br-btn-primary { background: var(--accent-br); color: #0a0a0a; }
+    .br-btn-primary:hover { background: #7DD3FC; box-shadow: 0 0 0 1px rgba(56,189,248,.3), 0 8px 30px rgba(56,189,248,.15); }
+    .br-btn-ghost { border: 1px solid var(--border); color: var(--text-2); background: transparent; }
+    .br-btn-ghost:hover { border-color: rgba(56,189,248,.35); color: var(--text-1); }
+
+    /* ─────────────────────────────────────
+       MOBILE STICKY
+    ───────────────────────────────────── */
+    #mobile-sticky {
+      display: none; position: fixed; bottom: 0; left: 0; right: 0;
+      z-index: 50; padding: 10px 16px;
+      background: rgba(10,10,10,.93); backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .ms-cmd { font-family: var(--font-mono); font-size: 13px; color: var(--text-1); }
+    .ms-btn {
+      background: var(--accent); color: #fff;
+      border: none; border-radius: 6px;
+      padding: 8px 16px; font-family: var(--font-mono); font-size: 12px;
+      cursor: pointer; min-height: 40px; white-space: nowrap;
+    }
+
+    /* ─────────────────────────────────────
+       ANIMATIONS
+    ───────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .fi { opacity: 0; transform: translateY(20px); transition: opacity .55s ease, transform .55s ease; }
+    .fi.vis { opacity: 1; transform: none; }
+    .fi.d1 { transition-delay: .1s; }
+    .fi.d2 { transition-delay: .2s; }
+    .fi.d3 { transition-delay: .3s; }
+    .fi.d4 { transition-delay: .4s; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+
+    /* ─────────────────────────────────────
+       RESPONSIVE
+    ───────────────────────────────────── */
+    @media (max-width: 1024px) {
+      .providers-grid { grid-template-columns: repeat(3,1fr); }
+    }
+
+    @media (max-width: 768px) {
+      :root { --gap: 64px; }
+      .steps { grid-template-columns: 1fr; }
+      .features { grid-template-columns: 1fr 1fr; }
+      .providers-grid { grid-template-columns: 1fr 1fr; }
+      .privacy-cards { grid-template-columns: 1fr; }
+      .dash-cards { grid-template-columns: repeat(2,1fr); }
+      .dash-charts { grid-template-columns: 1fr; }
+      .ft-inner { flex-direction: column; text-align: center; }
+      #mobile-sticky { display: flex; }
+      .hero-h1 { font-size: clamp(37px, 12vw, 64px); }
+      .cmd-block { flex-wrap: wrap; }
+      .nav-links .nav-page-link { display: none; }
+    }
+
+    @media (max-width: 480px) {
+      .features { grid-template-columns: 1fr; }
+      .providers-grid { grid-template-columns: 1fr; }
+    }
+
+    *:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+
+<a href="#main" class="skip-link">Skip to content</a>
+
+<!-- ═══════════════════════════════
+     NAV
+═══════════════════════════════ -->
+<nav class="site-nav">
+  <div class="nav-inner">
+    <div class="nav-left">
+      <a href="#" class="nav-brand">
+        <img src="burnrate-logo.png" alt="BurnRate logo" class="nav-logo" width="28" height="28">BurnRate
+      </a>
+    </div>
+    <div class="nav-links">
+      <a href="https://github.com/offbyone1/BurnRate" target="_blank" rel="noopener noreferrer" class="nav-gh">
+        <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </div>
+</nav>
+
+
+<!-- ═══════════════════════════════════════════
+     PAGE: BurnRate
+═══════════════════════════════════════════ -->
+<div id="page-br" class="product-page active">
+
+<header class="hero">
+  <div class="hero-inner">
+    <img src="burnrate-logo.png" alt="BurnRate logo – flame with usage meter" class="hero-logo" width="140" height="140" fetchpriority="high">
+    <p class="hero-eyebrow">v0.6.0 — Windows Desktop Widget</p>
+
+    <h1 class="hero-h1">
+      <span class="solid">Claude &amp; Codex</span>
+      <span class="stroke">Always Visible</span>
+      <span class="solid">Zero Setup</span>
+    </h1>
+
+    <p class="hero-sub">
+      A tiny always-on-top widget for Windows. See how much Claude and Codex you have left — with zero setup.
+    </p>
+
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:26px;opacity:0;animation:fadeUp .45s ease forwards .6s;">
+      <a href="https://github.com/offbyone1/BurnRate/releases" target="_blank" rel="noopener noreferrer" class="br-btn br-btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download for Windows
+      </a>
+      <a href="https://github.com/offbyone1/BurnRate" target="_blank" rel="noopener noreferrer" class="br-btn br-btn-ghost">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+        View on GitHub
+      </a>
+    </div>
+
+    <div class="trust-row" role="list">
+      <span class="pill" role="listitem"><span class="pill-dot" aria-hidden="true"></span>Always on top</span>
+      <span class="pill" role="listitem"><span class="pill-dot" aria-hidden="true"></span>Claude + Codex</span>
+      <span class="pill" role="listitem"><span class="pill-dot" aria-hidden="true"></span>Tauri v2 + Rust</span>
+      <span class="pill" role="listitem"><span class="pill-dot" aria-hidden="true"></span>MIT license</span>
+      <span class="pill" role="listitem"><span class="pill-dot" aria-hidden="true"></span>Windows native</span>
+    </div>
+
+    <div class="hero-shot fi" style="margin-top:42px;">
+      <img src="pill-compact.png" alt="BurnRate compact pill showing Claude and Codex usage" style="width:100%;max-width:480px;height:auto;display:block;margin:0 auto;border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.55);">
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- See inside -->
+<section style="padding-top:0;">
+  <div class="wrap">
+    <p class="label" aria-hidden="true">// See inside</p>
+    <h2 class="section-h">See what's left</h2>
+    <div class="fi" style="display:flex;gap:clamp(32px,6vw,64px);align-items:center;justify-content:center;flex-wrap:wrap;margin-top:40px;">
+      <img src="pill-expanded.png" alt="BurnRate expanded panel with Claude and Codex limit details" style="width:100%;max-width:360px;height:auto;border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.5);flex:0 0 auto;">
+      <ul style="list-style:none;padding:0;margin:0;max-width:340px;display:flex;flex-direction:column;gap:28px;">
+        <li style="display:flex;gap:14px;align-items:flex-start;">
+          <span style="width:9px;height:9px;border-radius:50%;background:#F59E0B;margin-top:8px;flex:0 0 auto;box-shadow:0 0 8px rgba(245,158,11,.55);"></span>
+          <span><strong style="display:block;color:var(--text-1,#ececf2);font-size:17px;margin-bottom:4px;">Live usage, both tools</strong><span style="color:var(--text-2,#a7a7b6);font-size:14.5px;line-height:1.55;">How much Claude and Codex you have left on every window, and when it resets.</span></span>
+        </li>
+        <li style="display:flex;gap:14px;align-items:flex-start;">
+          <span style="width:9px;height:9px;border-radius:50%;background:#38BDF8;margin-top:8px;flex:0 0 auto;box-shadow:0 0 8px rgba(56,189,248,.55);"></span>
+          <span><strong style="display:block;color:var(--text-1,#ececf2);font-size:17px;margin-bottom:4px;">Always on top, out of the way</strong><span style="color:var(--text-2,#a7a7b6);font-size:14.5px;line-height:1.55;">A tiny pill floats over your IDE. Click to expand for the full picture.</span></span>
+        </li>
+        <li style="display:flex;gap:14px;align-items:flex-start;">
+          <span style="width:9px;height:9px;border-radius:50%;background:#c15f3c;margin-top:8px;flex:0 0 auto;box-shadow:0 0 8px rgba(193,95,60,.55);"></span>
+          <span><strong style="display:block;color:var(--text-1,#ececf2);font-size:17px;margin-bottom:4px;">Zero setup, fully local</strong><span style="color:var(--text-2,#a7a7b6);font-size:14.5px;line-height:1.55;">Reads the logins you already have. Tokens never leave your machine.</span></span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- How it works -->
+<section aria-labelledby="br-how-h">
+  <div class="wrap">
+    <p class="label" aria-hidden="true">// How it works</p>
+    <h2 class="section-h" id="br-how-h">Three steps to always-on usage</h2>
+    <p class="section-p">No setup, no accounts. If you're logged into Claude Code or Codex, BurnRate just works — fetching live limits straight from the official APIs.</p>
+
+    <div class="steps">
+      <div class="step fi">
+        <span class="step-num" aria-hidden="true">01</span>
+        <h3 class="step-title">Download &amp; run</h3>
+        <p class="step-desc">Grab the .exe from GitHub Releases. No installer — the compact pill appears on your screen instantly.</p>
+        <code class="step-code">burnrate.exe</code>
+      </div>
+      <div class="step fi d2">
+        <span class="step-num" aria-hidden="true">02</span>
+        <h3 class="step-title">It just works</h3>
+        <p class="step-desc">BurnRate detects your existing Claude Code and Codex logins and reads the credentials they already store locally. No manual setup, no pasting, no config files.</p>
+      </div>
+      <div class="step fi d4">
+        <span class="step-num" aria-hidden="true">03</span>
+        <h3 class="step-title">Glance, don't search</h3>
+        <p class="step-desc">The pill floats over your IDE. Toggle Claude, Codex, or both. Click to expand for full bars and reset timers. Close to tray when you don't need it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- CTA -->
+<section id="cta" style="text-align:center;padding:var(--gap) 0 80px;">
+  <div class="wrap">
+    <h2 class="cta-h">
+      <span class="solid">Know your</span>
+      <span class="stroke-br">burn rate</span>
+    </h2>
+    <p class="cta-p fi">Your Claude and Codex limits, always visible — zero setup.</p>
+
+    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:28px;">
+      <a href="https://github.com/offbyone1/BurnRate/releases" target="_blank" rel="noopener noreferrer" class="br-btn br-btn-primary fi">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download for Windows
+      </a>
+    </div>
+
+    <div style="display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;">
+      <a href="https://github.com/offbyone1/BurnRate" class="gh-link fi" target="_blank" rel="noopener noreferrer" style="border-color:rgba(56,189,248,.2);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+        Star on GitHub
+      </a>
+      <a href="https://ko-fi.com/M4M11VBHXH" class="gh-link fi" target="_blank" rel="noopener noreferrer">
+        ☕ Buy me a token
+      </a>
+    </div>
+  </div>
+</section>
+
+</main>
+</div><!-- /page-br -->
+
+
+<!-- ═══════════════════════════════
+     FOOTER (shared)
+═══════════════════════════════ -->
+<footer>
+  <div class="wrap">
+    <div class="ft-inner">
+      <span class="ft-brand">offbyone</span>
+      <nav class="ft-links" aria-label="Footer links">
+        <a href="https://github.com/offbyone1/BurnRate" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://github.com/offbyone1/BurnRate/releases" target="_blank" rel="noopener noreferrer">Releases</a>
+        <a href="https://ko-fi.com/M4M11VBHXH" target="_blank" rel="noopener noreferrer">&#x2615; Ko-fi</a>
+        <a href="https://github.com/offbyone1/tokenbbq" target="_blank" rel="noopener noreferrer">TokenBBQ</a>
+      </nav>
+      <span class="ft-credit">Built by <a href="https://github.com/offbyone1" target="_blank" rel="noopener noreferrer" style="color:var(--text-2);text-decoration:underline;">offbyone1</a></span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  /* ── Scroll animations ── */
+  var obs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) { if (e.isIntersecting) e.target.classList.add('vis'); });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('#page-br .fi').forEach(function(el) { obs.observe(el); });
+</script>
+
+</body>
+</html>
