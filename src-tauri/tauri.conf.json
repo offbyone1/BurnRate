@@ -45,7 +45,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM2NzNBMkMxQTJFMUUzNApSV1EwSGk0YUxEcG5BOFR4NlRFdm9JVDg1NmlDK0hXem1wSzAxYkd4R04yYmtxTkJBWmdVMno2Nwo=",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgyMDk0MzNBODkyMUEzMDEKUldRQm95R0pPa01KZ2sxWHE2bG1pUEg2K1Y0NmthSFlOejVzS2hZK2hEK3I0cFQwZFpxT0E3S0MK",
       "endpoints": [
         "https://github.com/offbyone1/BurnRate/releases/latest/download/latest.json"
       ],
