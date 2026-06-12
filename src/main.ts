@@ -5,7 +5,7 @@ import { availableMonitors, getCurrentWindow, PhysicalPosition } from "@tauri-ap
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { ClaudeUsageResponse, CodexUsage, SettingsDisplay } from "./types";
 import { loadToggleState, saveToggleState, resolveMode, type SourceToggleState } from "./source-toggle";
-import { renderCompact, renderExpanded, setViewState, getWorkAreaPhysical, currentFrameInsetLogical, clampWindowToWorkAreaOnce, refreshPillPositionIfPillMode, setMonitorWorkAreaPhysical, refitExpandedHeight } from "./ui";
+import { renderCompact, renderExpanded, setViewState, getWorkAreaPhysical, currentFrameInsetLogical, clampWindowToWorkAreaOnce, refreshPillPositionIfPillMode, setMonitorWorkAreaPhysical, refitExpandedHeight, setTokenbbqLaunching } from "./ui";
 import { scheduleAutoUpdateCheck, setupUpdateControls } from "./update";
 import { describeClaudeFailure, describeCodexFailure, keepLastGoodOnClaudeFailure, keepLastGoodOnCodexFailure, usageForRender, type UsageIssue } from "./usage-state";
 
@@ -13,6 +13,8 @@ import { describeClaudeFailure, describeCodexFailure, keepLastGoodOnClaudeFailur
 let currentView: "compact" | "expanded" | "settings" = "compact";
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let localPollTimer: ReturnType<typeof setInterval> | null = null;
+// Guards against double-launching TokenBBQ while a launch is still in flight.
+let tokenbbqBusy = false;
 
 let lastUsageJson = "";
 let lastCodex: CodexUsage | null = null;
@@ -102,17 +104,6 @@ function startPolling(): void {
   localPollTimer = setInterval(fetchCodexUsage, 60_000);
 }
 
-function stopPolling(): void {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
-  if (localPollTimer) {
-    clearInterval(localPollTimer);
-    localPollTimer = null;
-  }
-}
-
 async function init(): Promise<void> {
   // WebView2 on Windows renders an opaque default background even when the
   // window is set to transparent — the result is a grey rectangle around the
@@ -139,9 +130,12 @@ async function init(): Promise<void> {
 
   const win = getCurrentWindow();
   win.onCloseRequested(async (event) => {
+    // Never quit on window-close and never hide into an invisible background
+    // state — collapse to the always-visible pill instead. Fully quitting is
+    // done explicitly via the tray icon's "Quit".
     event.preventDefault();
-    stopPolling();
-    await win.hide();
+    document.getElementById("settings-overlay")?.classList.remove("visible");
+    await collapse();
   });
 
   // Tray "Refresh" → refresh both halves of the pill, matching the in-UI
@@ -425,8 +419,11 @@ function setupEventListeners(): void {
     if (target.closest("button, input, label, .source-toggle-switch, .field-input-wrap")) return;
     void collapse();
   });
-  document.getElementById("btn-close")!.addEventListener("click", async () => {
-    await getCurrentWindow().hide();
+  document.getElementById("btn-close")!.addEventListener("click", () => {
+    // X collapses to the pill (stays visible) instead of hiding to the tray.
+    // Fully quitting is done via the tray icon → Quit.
+    document.getElementById("settings-overlay")!.classList.remove("visible");
+    collapse();
   });
 
   document.getElementById("btn-settings")!.addEventListener("click", async () => {
@@ -452,13 +449,18 @@ function setupEventListeners(): void {
   document.getElementById("usage-bars")!.addEventListener("click", async (e) => {
     const btn = (e.target as HTMLElement).closest("#btn-open-tokenbbq");
     if (!btn) return;
-    (btn as HTMLButtonElement).disabled = true;
+    if (tokenbbqBusy) return; // ignore extra clicks while a launch is in flight
+    tokenbbqBusy = true;
+    setTokenbbqLaunching(true); // disabled "Starting TokenBBQ…" spinner; survives re-renders
     try {
+      // Resolves only once the dashboard is actually up (or instantly if one is
+      // already running) — no arbitrary timeout, no duplicate windows/tabs.
       await invoke("open_tokenbbq");
     } catch (err) {
       console.warn("open_tokenbbq failed:", err);
     } finally {
-      setTimeout(() => ((btn as HTMLButtonElement).disabled = false), 1500);
+      tokenbbqBusy = false;
+      setTokenbbqLaunching(false);
     }
   });
 

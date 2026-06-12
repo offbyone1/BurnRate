@@ -372,13 +372,36 @@ function renderCodexRatesHtml(codex: CodexUsage): string {
   return out;
 }
 
-// The single bridge to TokenBBQ: a tagline + button that launches
-// `npx tokenbbq@latest dashboard` (handled in main.ts → open_tokenbbq).
-// The small TokenBBQ coin logo appears ONLY here.
+// Whether a TokenBBQ launch is in flight. Set by main.ts around the
+// open_tokenbbq invoke so the button shows a "Starting…" spinner — and survives
+// the expanded panel's periodic re-render. The setter also repaints the block
+// in place so the click gives instant feedback before the next refresh.
+let tokenbbqLaunching = false;
+export function setTokenbbqLaunching(launching: boolean): void {
+  tokenbbqLaunching = launching;
+  const block = document.querySelector(".tokenbbq-link-block");
+  if (block) block.outerHTML = renderTokenbbqLinkHtml();
+}
+
+// The single bridge to TokenBBQ: a tagline + button that launches TokenBBQ's
+// dashboard (bare `npx tokenbbq@latest`, handled in main.ts → open_tokenbbq).
+// The small TokenBBQ coin logo appears ONLY here. While launching, the button
+// becomes a disabled "Starting…" spinner so the user knows the click landed.
 function renderTokenbbqLinkHtml(): string {
+  if (tokenbbqLaunching) {
+    return `
+    <div class="tokenbbq-link-block">
+      <p class="tokenbbq-link-tagline">See your exact tokens &amp; costs</p>
+      <button class="open-dashboard-btn" id="btn-open-tokenbbq" disabled>
+        <span class="tb-spinner" aria-hidden="true"></span>
+        Starting TokenBBQ…
+      </button>
+    </div>`;
+  }
   return `
     <div class="tokenbbq-link-block">
-      <p class="tokenbbq-link-tagline">View all your tokens in total</p>
+      <p class="tokenbbq-link-tagline">See your exact tokens &amp; costs</p>
+      <svg class="tokenbbq-link-arrow" width="16" height="10" viewBox="0 0 16 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 2l6 6 6-6"/></svg>
       <button class="open-dashboard-btn" id="btn-open-tokenbbq">
         <img src="/tokenbbq-icon.png" alt="" class="tokenbbq-link-logo" width="18" height="18">
         Open TokenBBQ
