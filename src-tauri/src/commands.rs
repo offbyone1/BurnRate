@@ -407,18 +407,57 @@ pub async fn load_settings(app: AppHandle) -> Result<SettingsDisplay, String> {
 // */
 
 const TOKENBBQ_FALLBACK_URL: &str = "https://github.com/offbyone1/tokenbbq";
+const TOKENBBQ_PORT: u16 = 3000;
+const TOKENBBQ_READY_TIMEOUT: Duration = Duration::from_secs(120);
 
-/// Launch TokenBBQ's dashboard via `npx tokenbbq@latest dashboard`. No bundling,
-/// no sidecar — TokenBBQ is fetched on demand. If npx (Node) is unavailable,
-/// fall back to opening the project page in the browser so the button never
-/// dead-ends. Detaches; the dashboard outlives the widget.
+/// Open TokenBBQ's dashboard in the browser. BurnRate shows only percentages;
+/// TokenBBQ is the companion that shows exact token counts and costs.
+///
+/// Driven by the loopback PORT, not stdout — the published TokenBBQ CLI prints
+/// nothing parseable under `--no-open`, and its output format differs between
+/// versions. TokenBBQ serves on a fixed port (3000) and refuses to start a
+/// second instance on a taken port, so the port itself is the source of truth:
+///   * already serving on :3000  -> just open the browser (no duplicate, instant)
+///   * nothing there             -> spawn `npx tokenbbq@latest`, wait until the
+///                                  port answers, THEN open the browser
+/// `--no-open` lets us own the browser-open so the frontend's await resolves
+/// exactly when the dashboard is actually reachable.
 #[tauri::command]
 pub async fn open_tokenbbq() -> Result<(), String> {
-    tokio::task::spawn_blocking(|| {
-        if npx_available() {
-            spawn_detached_tokenbbq_dashboard()
-        } else {
-            open_url_detached(TOKENBBQ_FALLBACK_URL)
+    tokio::task::spawn_blocking(|| -> Result<(), String> {
+        let url = format!("http://127.0.0.1:{TOKENBBQ_PORT}");
+
+        // Already up (this or a previous session)? Just bring it to the front.
+        if tokenbbq_dashboard_up(TOKENBBQ_PORT) {
+            return open_url_detached(&url);
+        }
+
+        // Not up — we need npx. If Node isn't installed, open the project page
+        // instead of dead-ending.
+        if !npx_available() {
+            return open_url_detached(TOKENBBQ_FALLBACK_URL);
+        }
+
+        // Launch the dashboard and wait until the port actually answers.
+        let mut child = spawn_tokenbbq_detached(TOKENBBQ_PORT)?;
+        let deadline = Instant::now() + TOKENBBQ_READY_TIMEOUT;
+        loop {
+            if tokenbbq_dashboard_up(TOKENBBQ_PORT) {
+                return open_url_detached(&url);
+            }
+            // npx/node exited before the server came up (e.g. the port was held
+            // by something else) — fail fast instead of waiting out the timeout.
+            if let Ok(Some(status)) = child.try_wait() {
+                return Err(format!(
+                    "TokenBBQ exited before its dashboard was ready (code {:?})",
+                    status.code()
+                ));
+            }
+            if Instant::now() >= deadline {
+                let _ = child.kill();
+                return Err("TokenBBQ did not start in time".to_string());
+            }
+            std::thread::sleep(Duration::from_millis(300));
         }
     })
     .await
@@ -444,26 +483,58 @@ fn npx_available() -> bool {
     matches!(cmd.status(), Ok(s) if s.success())
 }
 
-fn spawn_detached_tokenbbq_dashboard() -> Result<(), String> {
-    // npx on Windows is a .cmd shim — must go through `cmd /C`, a bare
+/// Spawn `npx tokenbbq@latest --no-open --port=<port>` detached. The dashboard
+/// keeps running after the widget closes (it outlives the widget, by design).
+/// All stdio is silenced; readiness is detected via the port, not the output.
+fn spawn_tokenbbq_detached(port: u16) -> Result<std::process::Child, String> {
+    let port_arg = format!("--port={port}");
+    // npx on Windows is a .cmd shim — must go through `cmd /C`; a bare
     // Command::new("npx") fails with "program not found".
     #[cfg(windows)]
     let mut cmd = {
         let mut c = std::process::Command::new("cmd");
-        c.args(["/C", "npx", "-y", "tokenbbq@latest", "dashboard"]);
+        c.args(["/C", "npx", "-y", "tokenbbq@latest", "--no-open", &port_arg]);
         c.creation_flags(CREATE_NO_WINDOW);
         c
     };
     #[cfg(not(windows))]
     let mut cmd = {
         let mut c = std::process::Command::new("npx");
-        c.args(["-y", "tokenbbq@latest", "dashboard"]);
+        c.args(["-y", "tokenbbq@latest", "--no-open", &port_arg]);
         c
     };
     cmd.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
     cmd.spawn()
-        .map(|_| ())
         .map_err(|e| format!("Failed to launch TokenBBQ via npx: {}", e))
+}
+
+/// Whether a TokenBBQ dashboard is answering on `port`. Sends a tiny HTTP GET
+/// and checks for the "TokenBBQ" marker so an unrelated service squatting on
+/// the port isn't mistaken for ours.
+fn tokenbbq_dashboard_up(port: u16) -> bool {
+    use std::io::{Read, Write};
+    use std::net::{SocketAddr, TcpStream};
+    let Ok(addr) = format!("127.0.0.1:{port}").parse::<SocketAddr>() else {
+        return false;
+    };
+    let Ok(mut stream) = TcpStream::connect_timeout(&addr, Duration::from_millis(400)) else {
+        return false;
+    };
+    let _ = stream.set_read_timeout(Some(Duration::from_millis(800)));
+    let req = "GET / HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n";
+    if stream.write_all(req.as_bytes()).is_err() {
+        return false;
+    }
+    let mut buf = [0u8; 4096];
+    let mut total = 0;
+    while total < buf.len() {
+        match stream.read(&mut buf[total..]) {
+            Ok(0) => break,
+            Ok(n) => total += n,
+            Err(_) => break,
+        }
+    }
+    String::from_utf8_lossy(&buf[..total]).contains("TokenBBQ")
 }
 
 fn open_url_detached(url: &str) -> Result<(), String> {

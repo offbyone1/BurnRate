@@ -1,6 +1,6 @@
 {
   "name": "burnrate-widget",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "description": "Always-on-top desktop widget showing your Claude & Codex rate-limit usage at a glance",
   "author": "offbyone1",
