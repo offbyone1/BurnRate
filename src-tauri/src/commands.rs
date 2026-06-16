@@ -407,7 +407,10 @@ pub async fn load_settings(app: AppHandle) -> Result<SettingsDisplay, String> {
 // */
 
 const TOKENBBQ_FALLBACK_URL: &str = "https://github.com/offbyone1/tokenbbq";
-const TOKENBBQ_PORT: u16 = 3000;
+// Must match TokenBBQ's default port (src/index.ts). 3005, not 3000: port 3000
+// is constantly taken by local dev servers, which would push TokenBBQ onto a
+// fallback port we can't predict and the "already serving?" check would miss.
+const TOKENBBQ_PORT: u16 = 3005;
 const TOKENBBQ_READY_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// Open TokenBBQ's dashboard in the browser. BurnRate shows only percentages;
@@ -415,9 +418,9 @@ const TOKENBBQ_READY_TIMEOUT: Duration = Duration::from_secs(120);
 ///
 /// Driven by the loopback PORT, not stdout — the published TokenBBQ CLI prints
 /// nothing parseable under `--no-open`, and its output format differs between
-/// versions. TokenBBQ serves on a fixed port (3000) and refuses to start a
+/// versions. TokenBBQ serves on a fixed port (3005) and refuses to start a
 /// second instance on a taken port, so the port itself is the source of truth:
-///   * already serving on :3000  -> just open the browser (no duplicate, instant)
+///   * already serving on :3005  -> just open the browser (no duplicate, instant)
 ///   * nothing there             -> spawn `npx tokenbbq@latest`, wait until the
 ///                                  port answers, THEN open the browser
 /// `--no-open` lets us own the browser-open so the frontend's await resolves
