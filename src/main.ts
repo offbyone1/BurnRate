@@ -4,7 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { availableMonitors, getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { ClaudeUsageResponse, CodexUsage, SettingsDisplay } from "./types";
-import { loadToggleState, saveToggleState, resolveMode, type SourceToggleState } from "./source-toggle";
+import { loadToggleState, saveToggleState, hasStoredToggles, resolveMode, type SourceToggleState } from "./source-toggle";
 import { renderCompact, renderExpanded, setViewState, getWorkAreaPhysical, currentFrameInsetLogical, clampWindowToWorkAreaOnce, refreshPillPositionIfPillMode, setMonitorWorkAreaPhysical, refitExpandedHeight, setTokenbbqLaunching } from "./ui";
 import { scheduleAutoUpdateCheck, setupUpdateControls } from "./update";
 import { describeClaudeFailure, describeCodexFailure, keepLastGoodOnClaudeFailure, keepLastGoodOnCodexFailure, usageForRender, type UsageIssue } from "./usage-state";
@@ -19,6 +19,11 @@ let tokenbbqBusy = false;
 let lastUsageJson = "";
 let lastCodex: CodexUsage | null = null;
 let toggleState: SourceToggleState = loadToggleState();
+// On a fresh install we auto-pick which sources to show from what's actually
+// detected (see applyFirstRunDetection), instead of always defaulting to
+// Claude. Stays pending until we detect something, so a not-yet-authed user
+// gets the right greeting once their agent is set up.
+let firstRunPending = !hasStoredToggles();
 let claudeIssue: UsageIssue | null = null;
 let codexIssue: UsageIssue | null = null;
 
@@ -95,11 +100,36 @@ async function fetchCodexUsage(): Promise<void> {
   }
 }
 
+// First-run greeting: default the visible sources to whatever we detected
+// (Claude usage present / Codex plan present). Only one detected → only that
+// one shows; both → both. If nothing is detected yet we keep the Claude
+// default and stay pending so a later launch (once the agent is authed) can
+// still auto-pick.
+function applyFirstRunDetection(): void {
+  const usage = lastClaudeUsage();
+  const hasClaude = !!(usage?.five_hour || usage?.seven_day);
+  const hasCodex = !!(lastCodex && lastCodex.planType !== null);
+  if (!hasClaude && !hasCodex) return;
+  firstRunPending = false;
+  toggleState = { claude: hasClaude, codex: hasCodex };
+  saveToggleState(toggleState);
+  const render = usageForRender(usage);
+  renderCompact(render, lastCodex, toggleState);
+  renderExpanded(render, lastCodex, toggleState, currentIssues());
+  if (currentView === "compact") {
+    setViewState("compact", currentMode()).catch(() => {});
+  }
+}
+
 function startPolling(): void {
   if (pollTimer) clearInterval(pollTimer);
   if (localPollTimer) clearInterval(localPollTimer);
-  fetchUsage();
-  fetchCodexUsage();
+  if (firstRunPending) {
+    Promise.allSettled([fetchUsage(), fetchCodexUsage()]).then(applyFirstRunDetection);
+  } else {
+    fetchUsage();
+    fetchCodexUsage();
+  }
   pollTimer = setInterval(fetchUsage, 60_000);
   localPollTimer = setInterval(fetchCodexUsage, 60_000);
 }

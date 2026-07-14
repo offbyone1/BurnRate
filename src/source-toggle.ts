@@ -29,6 +29,16 @@ export function loadToggleState(): SourceToggleState {
   };
 }
 
+/**
+ * Whether the user has ever set the toggles. False on a fresh install, which
+ * lets first-run code auto-pick the visible sources from what's detected
+ * instead of blindly defaulting to Claude.
+ */
+export function hasStoredToggles(): boolean {
+  return localStorage.getItem(STORAGE_KEY_CLAUDE) !== null
+    || localStorage.getItem(STORAGE_KEY_CODEX) !== null;
+}
+
 /** Persist the current toggle state. Call after any mutation. */
 export function saveToggleState(state: SourceToggleState): void {
   localStorage.setItem(STORAGE_KEY_CLAUDE, state.claude ? '1' : '0');
