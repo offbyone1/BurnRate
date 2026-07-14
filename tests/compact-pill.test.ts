@@ -124,3 +124,23 @@ test('single Codex compact pill displays used quota', () => {
   assert.equal(elements['five-hour-compact'].textContent, '21%');
   assert.equal(elements['seven-day-compact'].textContent, '4%');
 });
+
+// Codex removed its 5h window: the weekly window now arrives as `primary`.
+// It must render in the 7d slot, leaving the 5h slot empty — not slide into 5h.
+test('Codex weekly-only usage renders in the 7d slot, 5h slot empty', () => {
+  const elements = setupCompactDom();
+  const weeklyOnly: CodexUsage = {
+    planType: 'pro',
+    primary: { utilization: 74, windowMinutes: 10080, resetsAt: null },
+    secondary: null,
+    snapshotAt: '2026-05-25T12:00:00.000Z',
+  };
+
+  renderCompact({ five_hour: null, seven_day: null, extra_usage: null }, weeklyOnly, {
+    claude: false,
+    codex: true,
+  });
+
+  assert.equal(elements['five-hour-compact'].textContent, '--');
+  assert.equal(elements['seven-day-compact'].textContent, '74%');
+});

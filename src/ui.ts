@@ -1,5 +1,5 @@
 import { getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
-import type { ClaudeUsageResponse, CodexUsage, ViewState } from "./types";
+import type { ClaudeUsageResponse, CodexUsage, CodexWindowUsage, ViewState } from "./types";
 import { resolveMode, type SourceMode, type SourceToggleState } from "./source-toggle.ts";
 import { formatOptionalUtilization, hasUtilization, type UsageIssue } from "./usage-state.ts";
 
@@ -172,6 +172,26 @@ function codexWindowLabel(windowMinutes: number): string {
   return `${days}-Day Window`;
 }
 
+// Codex dropped its fixed 5-hour window and no longer guarantees which slot
+// (primary/secondary) carries which window — the weekly window now arrives as
+// `primary`. Bucket the returned windows by their own length so the short
+// (<1 day) window always lands in the 5h column and the weekly window in the
+// 7d column, instead of trusting positional order (which slid the weekly value
+// into the 5h slot and left 7d empty).
+function codexWindows(codex: CodexUsage | null): {
+  short: CodexWindowUsage | null;
+  long: CodexWindowUsage | null;
+} {
+  let short: CodexWindowUsage | null = null;
+  let long: CodexWindowUsage | null = null;
+  for (const w of [codex?.primary, codex?.secondary]) {
+    if (!w) continue;
+    if (w.windowMinutes < 1440) short = w;
+    else long = w;
+  }
+  return { short, long };
+}
+
 function toggleRowHtml(
   id: string,
   label: string,
@@ -264,9 +284,11 @@ export function renderCompact(
     fiveHourLabel.textContent = formatHoursCompact(usage.five_hour?.resets_at ?? null) || "5h";
     sevenDayLabel.textContent = formatDaysCompact(usage.seven_day?.resets_at ?? null) || "7d";
 
-    // Secondary row = Codex
-    const fhPctX = codex?.primary?.utilization;
-    const sdPctX = codex?.secondary?.utilization;
+    // Secondary row = Codex. Bucket by window length so the weekly value
+    // lands in the 7d slot, not the 5h slot (Codex dropped its 5h window).
+    const cx = codexWindows(codex);
+    const fhPctX = cx.short?.utilization;
+    const sdPctX = cx.long?.utilization;
     const fh2 = document.getElementById('five-hour-compact-2')! as HTMLElement;
     const sd2 = document.getElementById('seven-day-compact-2')! as HTMLElement;
     const fh2l = document.getElementById('five-hour-label-2')!;
@@ -275,21 +297,22 @@ export function renderCompact(
     fh2.style.color = optionalUtilizationColor(fhPctX);
     sd2.textContent = formatOptionalUtilization(sdPctX);
     sd2.style.color = optionalUtilizationColor(sdPctX);
-    fh2l.textContent = formatHoursCompact(codex?.primary?.resetsAt ?? null) || "5h";
-    sd2l.textContent = formatDaysCompact(codex?.secondary?.resetsAt ?? null) || "7d";
+    fh2l.textContent = formatHoursCompact(cx.short?.resetsAt ?? null) || "5h";
+    sd2l.textContent = formatDaysCompact(cx.long?.resetsAt ?? null) || "7d";
     return;
   }
 
   if (mode === 'codex') {
     setSingleRowVisibility(codexBadgeSvg, CODEX_BRAND_COLOR);
-    const fhPct = codex?.primary?.utilization;
-    const sdPct = codex?.secondary?.utilization;
+    const cx = codexWindows(codex);
+    const fhPct = cx.short?.utilization;
+    const sdPct = cx.long?.utilization;
     fiveHour.textContent = formatOptionalUtilization(fhPct);
     fiveHour.style.color = optionalUtilizationColor(fhPct);
     sevenDay.textContent = formatOptionalUtilization(sdPct);
     sevenDay.style.color = optionalUtilizationColor(sdPct);
-    fiveHourLabel.textContent = formatHoursCompact(codex?.primary?.resetsAt ?? null) || "5h";
-    sevenDayLabel.textContent = formatDaysCompact(codex?.secondary?.resetsAt ?? null) || "7d";
+    fiveHourLabel.textContent = formatHoursCompact(cx.short?.resetsAt ?? null) || "5h";
+    sevenDayLabel.textContent = formatDaysCompact(cx.long?.resetsAt ?? null) || "7d";
     return;
   }
 
@@ -351,21 +374,22 @@ function renderClaudeRatesHtml(usage: ClaudeUsageResponse): string {
 // caller already gates on plan availability — this function trusts that and
 // just renders whatever windows exist.
 function renderCodexRatesHtml(codex: CodexUsage): string {
-  if (!codex.primary && !codex.secondary) return '';
+  const { short, long } = codexWindows(codex);
+  if (!short && !long) return '';
   let out = brandSectionHeaderHtml('Codex', CODEX_BRAND_COLOR);
-  if (codex.primary) {
+  if (short) {
     out += usageRowHtml(
-      codexWindowLabel(codex.primary.windowMinutes),
-      codex.primary.utilization,
-      formatTimeUntil(codex.primary.resetsAt),
+      codexWindowLabel(short.windowMinutes),
+      short.utilization,
+      formatTimeUntil(short.resetsAt),
       CODEX_BRAND_COLOR,
     );
   }
-  if (codex.secondary) {
+  if (long) {
     out += usageRowHtml(
-      codexWindowLabel(codex.secondary.windowMinutes),
-      codex.secondary.utilization,
-      formatResetDate(codex.secondary.resetsAt),
+      codexWindowLabel(long.windowMinutes),
+      long.utilization,
+      formatResetDate(long.resetsAt),
       CODEX_BRAND_COLOR,
     );
   }
