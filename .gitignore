@@ -15,3 +15,8 @@ app-icon.png
 *.p12
 *.pfx
 .credentials.json
+
+# Dev-only scaffolding — kept in the Burnrate-Dev repo, must never reach prod
+branding/
+docs/superpowers/
+deploy/
